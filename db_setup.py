@@ -1,5 +1,4 @@
 import os
-
 import psycopg2
 from dotenv import load_dotenv
 
@@ -31,8 +30,29 @@ def create_tables():
     """
     connection = get_connection()
     # Implement
-    pass
-
+    with connection:
+        with connection.cursor() as cur:
+            cur.execute("""
+                Create table if not exists usertype (
+                    id SERIAL PRIMARY KEY,
+                    is_admin BOOLEAN NOT NULL,
+                    is_teacher BOOLEAN NOT NULL,
+                    is_student BOOLEAN NOT NULL);
+                    """)
+            cur.execute("""
+                Create table if not exists users (
+                    id SERIAL PRIMARY KEY,
+                    usertype_id BIGINT REFERENCES usertype(id) ON DELETE SET NULL,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+                    """)
+            
+            # cur.execute(""" Create table if not exists kahoots (
+            #             id SERIAL PRIMARY KEY,
+            #             )
+                        
+            #             """)
 
 if __name__ == "__main__":
     # Only reason to execute this file would be to create new tables, meaning it serves a migration file
