@@ -3,24 +3,24 @@ Custom exceptions for the Kahoot like Quiz API
 """
 
 
-class QuizAppException(Exception):
-    """Base exception for all quiz application errors"""
+class KahootAppException(Exception):
+    """Base exception for all kahoot application errors"""
 
     pass
 
 
-class ResourceNotFoundException(QuizAppException):
+class ResourceNotFoundException(KahootAppException):
     """Base exception for when a resource is not found"""
 
     pass
 
 
-class QuizNotFoundException(ResourceNotFoundException):
-    """Raised when a quiz is not found"""
+class KahootNotFoundException(ResourceNotFoundException):
+    """Raised when a kahoot is not found"""
 
-    def __init__(self, quiz_id: int):
-        self.quiz_id = quiz_id
-        super().__init__(f"Quiz with id {quiz_id} not found")
+    def __init__(self, kahoot_id: int):
+        self.kahoot_id = kahoot_id
+        super().__init__(f"Kahoot with id {kahoot_id} not found")
 
 
 class QuestionNotFoundException(ResourceNotFoundException):
@@ -30,4 +30,11 @@ class QuestionNotFoundException(ResourceNotFoundException):
         self.question_id = question_id
         super().__init__(f"Question with id {question_id} not found")
 
+
+class AnswerNotFoundException(ResourceNotFoundException):
+    """Raised when an answer is not found"""
+
+    def __init__(self, answer_id: int):
+        self.answer_id = answer_id
+        super().__init__(f"Answer with id {answer_id} not found")
 

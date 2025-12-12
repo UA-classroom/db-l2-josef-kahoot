@@ -3,13 +3,13 @@ from typing import Optional, List
 from datetime import datetime
 
 
-# Quiz Schemas
-class QuizCreate(BaseModel):
+# Kahoot Schemas
+class KahootCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
 
 
-class Quiz(BaseModel):
+class Kahoot(BaseModel):
     id: int
     title: str
     description: Optional[str]

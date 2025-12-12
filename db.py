@@ -19,40 +19,40 @@ start with a connection parameter.
 """
 #quiz functions
 
-#fetching multiple quizzes
-def get_multiple_quizzes(con):
-    """get all quizzes from the database"""
+#fetching multiple kahoots
+def get_multiple_kahoots(con):
+    """get all kahoots from the database"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute("SELECT * FROM kahoots;")
-            quizzes = cursor.fetchall()
-    return quizzes
+            kahoots = cursor.fetchall()
+    return kahoots
 
-#creating a quiz
-def create_quiz(con, quiz: schemas.QuizCreate):
-    """create a new quiz in the database"""
+#creating a kahoot
+def create_kahoot(con, kahoot: schemas.KahootCreate):
+    """create a new kahoot in the database"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(
                 "INSERT INTO kahoots (title, category) VALUES (%s, %s) RETURNING id;",
-                (quiz.title, quiz.category),
+                (kahoot.title, kahoot.category),
             )
-            quiz_id = cursor.fetchone()["id"]
-    return quiz_id
+            kahoot_id = cursor.fetchone()["id"]
+    return kahoot_id
 
-#get a singular quiz
-def get_quiz(con, quiz_id: int):
-    """get a single quiz by id from the database"""
+#get a singular kahoot
+def get_kahoot(con, kahoot_id: int):
+    """get a single kahoot by id from the database"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
-            cursor.execute("""SELECT * FROM kahoots WHERE id = %s""", (quiz_id,))
-            quiz = cursor.fetchone()
-            if not quiz:
-                raise exceptions.QuizNotFoundException(quiz_id)
-            return quiz
+            cursor.execute("""SELECT * FROM kahoots WHERE id = %s""", (kahoot_id,))
+            kahoot = cursor.fetchone()
+            if not kahoot:
+                raise exceptions.QuizNotFoundException(kahoot_id)
+            return kahoot
 
-#update a quiz      
-def update_quiz(con, quiz_id: int, quiz: schemas.QuizUpdate):
+#update a kahoot      
+def update_kahoot(con, quiz_id: int, quiz: schemas.QuizUpdate):
     """update a quiz in the database"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -106,31 +106,3 @@ def get_question(con, question_id: int):
             return question
 
 
-### THIS IS JUST AN EXAMPLE OF A FUNCTION FOR INSPIRATION FOR A LIST-OPERATION (FETCHING MANY ENTRIES)
-# def get_items(con):
-#     with con:
-#         with con.cursor(cursor_factory=RealDictCursor) as cursor:
-#             cursor.execute("SELECT * FROM items;")
-#             items = cursor.fetchall()
-#     return items
-
-
-### THIS IS JUST INSPIRATION FOR A DETAIL OPERATION (FETCHING ONE ENTRY)
-# def get_item(con, item_id):
-#     with con:
-#         with con.cursor(cursor_factory=RealDictCursor) as cursor:
-#             cursor.execute("""SELECT * FROM items WHERE id = %s""", (item_id,))
-#             item = cursor.fetchone()
-#             return item
-
-
-### THIS IS JUST INSPIRATION FOR A CREATE-OPERATION
-# def add_item(con, title, description):
-#     with con:
-#         with con.cursor(cursor_factory=RealDictCursor) as cursor:
-#             cursor.execute(
-#                 "INSERT INTO items (title, description) VALUES (%s, %s) RETURNING id;",
-#                 (title, description),
-#             )
-#             item_id = cursor.fetchone()["id"]
-#     return item_id
