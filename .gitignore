@@ -3,3 +3,6 @@ venv
 .env
 .*env*
 description*
+test.py
+testapp.py
+testdb_setup.py
