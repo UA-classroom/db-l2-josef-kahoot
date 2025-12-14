@@ -19,8 +19,8 @@ start with a connection parameter.
 """
 #quiz functions
 
-#fetching multiple kahoots
-def get_multiple_kahoots(con):
+#fetching all kahoots
+def get_all_kahoots(con):
     """get all kahoots from the database"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
