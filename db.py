@@ -52,7 +52,7 @@ def get_kahoot(con, kahoot_id: int):
             return kahoot
 
 #update a kahoot      
-def update_kahoot(con, kahoot_id: int, kahoot: schemas.KahootUpdate):
+def update_kahoot(con, kahoot_id: int, kahoot: schemas.KahootCreate):
     """update a kahoot in the database"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
