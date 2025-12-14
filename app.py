@@ -29,7 +29,7 @@ def get_kahoots():
         con = get_connection()
         kahoots = db.get_all_kahoots(con)
         return kahoots
-    except exceptions.DatabaseException as e:
+    except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @app.get("/kahoots/{kahoot_id}", response_model=schemas.Kahoot, status_code=status.HTTP_200_OK)
@@ -45,7 +45,7 @@ def get_kahoot(kahoot_id: int):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     
-@app.post("/kahoots/create/", response_model=schemas.Kahoot, status_code=status.HTTP_201_CREATED)
+@app.post("/kahoots/create/", response_model=schemas.KahootCreate, status_code=status.HTTP_201_CREATED)
 def create_kahoot(kahoot: schemas.KahootCreate):
     """create a new kahoot"""
     # Endpoint to create a new kahoot
@@ -53,7 +53,7 @@ def create_kahoot(kahoot: schemas.KahootCreate):
         con = get_connection()
         kahoot_id = db.create_kahoot(con, kahoot)
         return {"id": kahoot_id, "message": "Kahoot created successfully"}
-    except exceptions.DatabaseException as e:
+    except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     
 @app.delete("/kahoots/{kahoot_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -74,13 +74,14 @@ def delete_kahoot(kahoot_id: int):
         )
 
 @app.put("/kahoots/{kahoot_id}", response_model=schemas.Kahoot, status_code=status.HTTP_200_OK)
-def update_kahoot(kahoot_id: int, kahoot: schemas.KahootUpdate):
+def update_kahoot(kahoot_id: int, kahoot: schemas.KahootCreate):
     """update a kahoot"""
     # Endpoint to update a kahoot
     try:
         con = get_connection()
         update_kahoot = db.update_kahoot(con, kahoot_id, kahoot.title, kahoot.category)
         return {"id": update_kahoot, "message": "Kahoot updated successfully"}
+        
     except exceptions.ResourceNotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except exceptions.DatabaseException as e:
@@ -99,24 +100,51 @@ def get_questions(kahoot_id: int):
         con = get_connection()
         questions = db.get_all_questions_quiz(con, kahoot_id)
         return questions
-    except exceptions.DatabaseException as e:
+    except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+@app.get("/questions/{question_id}", response_model=schemas.Question, status_code=status.HTTP_200_OK)
+def get_question(question_id: int):
+    """get a specific question by id for a specific kahoot"""
+    # Endpoint to get a specific question by id for a specific kahoot
+    try:
+        con = get_connection()
+        question = db.get_question(con, question_id)
+        if not question:    
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found")
+        return question
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-# INSPIRATION FOR A LIST-ENDPOINT - Not necessary to use pydantic models, but we could to ascertain that we return the correct values
-# @app.get("/items/")
-# def read_items():
-#     con = get_connection()
-#     items = get_items(con)
-#     return {"items": items}
+@app.post("/questions", status_code=status.HTTP_201_CREATED)
+def create_question(question: schemas.QuestionCreate):
+    """create a new question for a specific kahoot"""
+    # Endpoint to create a new question for a specific kahoot
+    try:
+        con = get_connection()
+        question_id = db.create_question(con, question)
+        return {"id": question_id, "message": "Question created successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+@app.put("/questions/{question_id}", status_code=status.HTTP_200_OK)
+def update_question(question_id: int, question: schemas.QuestionCreate):
+    """update a question by id"""
+    # Endpoint to update a question by id
+    try:
+        con = get_connection()
+        updated_question_id = db.update_question(
+            con,
+            question_id,
+            question.question_text,
+            question.time_limit,
+            )
+        return {"id": updated_question_id, "message": "Question updated successfully"}
+    except exceptions.ResourceNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except exceptions.DatabaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-# INSPIRATION FOR A POST-ENDPOINT, uses a pydantic model to validate
-# @app.post("/validation_items/")
-# def create_item_validation(item: ItemCreate):
-#     con = get_connection()
-#     item_id = add_item_validation(con, item)
-#     return {"item_id": item_id}
-
-
-# IMPLEMENT THE ACTUAL ENDPOINTS! Feel free to remove
+# @app.delete("/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
