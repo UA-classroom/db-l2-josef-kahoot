@@ -83,23 +83,23 @@ def delete_kahoot(con, kahoot_id: int):
 #question functions
 
 #get all questions for a specific quiz
-def get_all_questions_quiz(con, quiz_id):
+def get_all_questions_quiz(con, kahoot_id):
     """get all questions for a specific quiz"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(
-                "SELECT * FROM questions WHERE quiz_id = %s ORDER BY created_at;",
-                (quiz_id,),
+                "SELECT * FROM questions WHERE kahoot_id = %s ORDER BY id;",
+                (kahoot_id,),
             )
             questions = cursor.fetchall()
     return questions
 
 #get a singular question
-def get_question(con, question_id: int):
+def get_question(con, kahoot_id, question_id: int):
     """get a single question by id"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
-            cursor.execute("""SELECT * FROM questions WHERE id = %s""", (question_id,))
+            cursor.execute("""SELECT * FROM questions WHERE id = %s AND kahoot_id = %s""", (question_id,kahoot_id))
             question = cursor.fetchone()
             if not question:
                 raise exceptions.QuestionNotFoundException(question_id)
@@ -110,8 +110,8 @@ def create_question(con, question: schemas.QuestionCreate):
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(
-                "INSERT INTO questions (quiz_id, question_text, time_limit) VALUES (%s, %s, %s) RETURNING id;",
-                (question.quiz_id, question.question_text, question.time_limit),
+                "INSERT INTO questions (kahoot_id, question_text, time_limit) VALUES (%s, %s, %s) RETURNING id;",
+                (question.kahoot_id, question.question_text, question.time_limit),
             )
             question_id = cursor.fetchone()["id"]
     return question_id
@@ -265,8 +265,8 @@ def create_game_session(con, session: schemas.GameSessionCreate):
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(
-                "INSERT INTO game_sessions (quiz_id, pin) VALUES (%s, %s) RETURNING id;",
-                (session.quiz_id, session.pin),
+                "INSERT INTO game_sessions (kahoot_id, pin) VALUES (%s, %s) RETURNING id;",
+                (session.kahoot_id, session.pin),
             )
             session_id = cursor.fetchone()["id"]
     return session_id

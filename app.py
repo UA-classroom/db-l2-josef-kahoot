@@ -73,7 +73,7 @@ def delete_kahoot(kahoot_id: int):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
-@app.put("/kahoots/{kahoot_id}", response_model=schemas.Kahoot, status_code=status.HTTP_200_OK)
+@app.put("/kahoots/{kahoot_id}", response_model=schemas.KahootCreate, status_code=status.HTTP_200_OK)
 def update_kahoot(kahoot_id: int, kahoot: schemas.KahootCreate):
     """update a kahoot"""
     # Endpoint to update a kahoot
@@ -103,13 +103,13 @@ def get_questions(kahoot_id: int):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@app.get("/questions/{question_id}", response_model=schemas.Question, status_code=status.HTTP_200_OK)
-def get_question(question_id: int):
+@app.get("/kahoots/{kahoot_id}/questions/{question_id}", response_model=schemas.Question, status_code=status.HTTP_200_OK)
+def get_question(kahoot_id: int, question_id: int):
     """get a specific question by id for a specific kahoot"""
     # Endpoint to get a specific question by id for a specific kahoot
     try:
         con = get_connection()
-        question = db.get_question(con, question_id)
+        question = db.get_question(con, kahoot_id, question_id)
         if not question:    
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found")
         return question

@@ -12,23 +12,25 @@ class KahootCreate(BaseModel):
 class Kahoot(BaseModel):
     id: int
     title: str
-    description: Optional[str]
-    created_at: datetime
+    category: str  # Added - exists in DB
+    creation_date: datetime  # Changed from created_at
+    description: Optional[str] = None
 
 
 # Question Schemas
 class QuestionCreate(BaseModel):
-    quiz_id: int
+    kahoot_id: int
     question_text: str = Field(..., min_length=1, max_length=500)
     time_limit: int = Field(default=30, ge=5, le=300)  # seconds
 
 
 class Question(BaseModel):
     id: int
-    quiz_id: int
+    kahoot_id: int
+    media_id: Optional[int] = None
     question_text: str
-    time_limit: int
-    created_at: datetime
+    time_limit: int | None = None
+    points: int | None = None
 
 
 # Answer/Option Schemas
@@ -58,13 +60,13 @@ class Player(BaseModel):
 
 # Game Session Schemas
 class GameSessionCreate(BaseModel):
-    quiz_id: int
+    kahoot_id: int
     pin: str = Field(..., min_length=4, max_length=8)
 
 
 class GameSession(BaseModel):
     id: int
-    quiz_id: int
+    kahoot_id: int
     pin: str
     is_active: bool
     created_at: datetime
