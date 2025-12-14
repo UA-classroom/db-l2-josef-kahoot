@@ -97,7 +97,7 @@ def get_questions(kahoot_id: int):
     # Endpoint to get all questions for a specific kahoot
     try:
         con = get_connection()
-        questions = db.get_questions_by_kahoot(con, kahoot_id)
+        questions = db.get_all_questions_quiz(con, kahoot_id)
         return questions
     except exceptions.DatabaseException as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
