@@ -111,6 +111,7 @@ def create_tables():
                         id SERIAL PRIMARY KEY,
                         game_session_id BIGINT REFERENCES game_sessions(id) ON DELETE CASCADE,
                         user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                        username VARCHAR(100),
                         joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         final_score INT DEFAULT 0,
                         rank INT);

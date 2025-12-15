@@ -38,3 +38,35 @@ class AnswerNotFoundException(ResourceNotFoundException):
         self.answer_id = answer_id
         super().__init__(f"Answer with id {answer_id} not found")
 
+
+class PlayerNotFoundException(ResourceNotFoundException):
+    """Raised when a player is not found"""
+
+    def __init__(self, player_id: int):
+        self.player_id = player_id
+        super().__init__(f"Player with id {player_id} not found")
+
+
+class GameSessionNotFoundException(ResourceNotFoundException):
+    """Raised when a game session is not found"""
+
+    def __init__(self, identifier: int | str, identifier_type: str = "id"):
+        self.identifier = identifier
+        self.identifier_type = identifier_type
+        if identifier_type == "pin":
+            super().__init__(f"Game session with pin '{identifier}' not found")
+        else:
+            super().__init__(f"Game session with id {identifier} not found")
+
+
+class DatabaseException(KahootAppException):
+    """Raised when a database operation fails"""
+
+    def __init__(self, operation: str, details: str = None):
+        self.operation = operation
+        self.details = details
+        message = f"Database error during {operation}"
+        if details:
+            message += f": {details}"
+        super().__init__(message)
+

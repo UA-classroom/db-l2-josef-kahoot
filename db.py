@@ -110,24 +110,24 @@ def create_question(con, question: schemas.QuestionCreate):
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(
-                "INSERT INTO questions (kahoot_id, question_text, time_limit) VALUES (%s, %s, %s) RETURNING id;",
-                (question.kahoot_id, question.question_text, question.time_limit),
+                "INSERT INTO questions (kahoot_id, question_text, question_type, time_limit, points) VALUES (%s, %s, %s, %s, %s) RETURNING id;",
+        (question.kahoot_id, question.question_text, question.question_type, question.time_limit, question.points),
             )
             question_id = cursor.fetchone()["id"]
     return question_id
 
 
-def update_question(con, question_id, question_text, time_limit):
+def update_question(con, question_id: int, question: schemas.QuestionCreate):
     """Update a question"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(
-                "UPDATE questions SET question_text = %s, time_limit = %s WHERE id = %s RETURNING id;",
-                (question_text, time_limit, question_id),
+                "UPDATE questions SET question_text = %s, question_type = %s, time_limit = %s, points = %s WHERE id = %s RETURNING id;",
+                (question.question_text, question.question_type, question.time_limit, question.points, question_id),
             )
             result = cursor.fetchone()
             if not result:
-                raise exceptions.QuestionNotFoundException(f"Question with id {question_id} not found")
+                raise exceptions.QuestionNotFoundException(question_id)
             return result["id"]
 
 
@@ -138,7 +138,7 @@ def delete_question(con, question_id):
             cursor.execute("DELETE FROM questions WHERE id = %s RETURNING id;", (question_id,))
             result = cursor.fetchone()
             if not result:
-                raise exceptions.QuestionNotFoundException(f"Question with id {question_id} not found")
+                raise exceptions.QuestionNotFoundException(question_id)
             return result["id"]
 
 
@@ -219,15 +219,28 @@ def get_participant(con, participant_id: int):
 
 
 def create_participant(con, participant: schemas.ParticipantCreate):
-    """Create a new participant (join a game session)"""
+    """Create a new participant (join a game session) - use custom username or generate random"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
-            cursor.execute(
-                "INSERT INTO participants (game_session_id) VALUES (%s) RETURNING id;",
-                (participant.game_session_id,),
-            )
-            participant_id = cursor.fetchone()["id"]
-    return participant_id
+            if participant.username:
+                # User provided their own username
+                cursor.execute(
+                    """INSERT INTO participants (game_session_id, username) 
+                    VALUES (%s, %s) 
+                    RETURNING id, username;""",
+                    (participant.game_session_id, participant.username),
+                )
+            else:
+                # Generate random username if not provided
+                cursor.execute(
+                    """INSERT INTO participants (game_session_id, username) 
+                    VALUES (%s, 'Player_' || substr(md5(random()::text), 1, 6)) 
+                    RETURNING id, username;""",
+                    (participant.game_session_id,),
+                )
+            result = cursor.fetchone()
+    return {"id": result["id"], "username": result["username"]}
+
 
 def delete_participant(con, participant_id: int):
     """Delete a participant (when they leave the game session)"""
@@ -374,7 +387,7 @@ def get_leaderboard(con, game_session_id: int):
                 """
                 SELECT
                     p.id as participant_id,
-                    u.username,
+                    COALESCE(p.username, u.username) as username,
                     COALESCE(SUM(pa.points_earned), 0) as total_score,
                     COUNT(CASE WHEN a.is_correct THEN 1 END) as correct_answers
                 FROM participants p
@@ -382,7 +395,7 @@ def get_leaderboard(con, game_session_id: int):
                 LEFT JOIN player_answers pa ON p.id = pa.participant_id AND pa.session_id = %s
                 LEFT JOIN answers a ON pa.answer_id = a.id
                 WHERE p.game_session_id = %s
-                GROUP BY p.id, u.username
+                GROUP BY p.id, p.username, u.username
                 ORDER BY total_score DESC;
                 """,
                 (game_session_id, game_session_id),

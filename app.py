@@ -43,7 +43,7 @@ def get_kahoot(kahoot_id: int):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     
-@app.post("/kahoots/create/", response_model=schemas.KahootCreate, status_code=status.HTTP_201_CREATED)
+@app.post("/kahoots/", response_model=schemas.KahootCreate, status_code=status.HTTP_201_CREATED)
 def create_kahoot(kahoot: schemas.KahootCreate):
     """create a new kahoot"""
     try:
@@ -109,7 +109,7 @@ def get_question(kahoot_id: int, question_id: int):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@app.post("/questions", status_code=status.HTTP_201_CREATED)
+@app.post("/questions/", status_code=status.HTTP_201_CREATED)
 def create_question(question: schemas.QuestionCreate):
     """create a new question for a specific kahoot"""
     try:
@@ -125,10 +125,9 @@ def update_question(question_id: int, question: schemas.QuestionCreate):
     try:
         con = get_connection()
         updated_question_id = db.update_question(
-            con,
-            question_id,
-            question.question_text,
-            question.time_limit,
+            con, 
+            question_id, 
+            question
             )
         return {"id": updated_question_id, "message": "Question updated successfully"}
     except exceptions.ResourceNotFoundException as e:
@@ -174,7 +173,7 @@ def get_answers_by_question(question_id: int):
         )
 
 
-@app.post("/answers", status_code=status.HTTP_201_CREATED)
+@app.post("/answers/", status_code=status.HTTP_201_CREATED)
 def create_answer(answer: schemas.AnswerCreate): 
     """Create a new answer"""
     try:
@@ -211,7 +210,7 @@ def delete_answer(answer_id: int):
         con = get_connection()
         deleted_id = db.delete_answer(con, answer_id)  
         return {"id": deleted_id, "message": "Answer deleted successfully"}
-    except ValueError as e:  
+    except exceptions.AnswerNotFoundException as e:  
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         raise HTTPException(
@@ -268,12 +267,31 @@ def delete_participant(participant_id: int):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+@app.put("/participants/{participant_id}/username", status_code=status.HTTP_200_OK)
+def update_participant_username(participant_id: int, new_username: str):
+    """Update participant's username"""
+    try:
+        con = get_connection()
+        cursor = con.cursor()
+        cursor.execute(
+            "UPDATE participants SET username = %s WHERE id = %s RETURNING id;",
+            (new_username, participant_id)
+        )
+        result = cursor.fetchone()
+        if not result:
+            raise exceptions.PlayerNotFoundException(participant_id)
+        con.commit()
+        return {"id": result[0], "message": "Username updated successfully"}
+    except exceptions.PlayerNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 # game seession endpoints
 
 
 @app.get(
-    "/game-sessions",
+    "/game-sessions/",
     response_model=List[schemas.GameSession],  
     status_code=status.HTTP_200_OK,
 )
@@ -300,7 +318,7 @@ def get_game_session(session_id: int):
         con = get_connection()
         session = db.get_game_session(con, session_id)  
         return session
-    except ValueError as e:  
+    except exceptions.GameSessionNotFoundException as e:  
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         raise HTTPException(
@@ -319,7 +337,7 @@ def get_game_session_by_pin(pin: str):
         con = get_connection()
         session = db.get_game_session_by_pin(con, pin)  
         return session
-    except ValueError as e:  
+    except exceptions.GameSessionNotFoundException as e:  
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         raise HTTPException(
@@ -327,7 +345,7 @@ def get_game_session_by_pin(pin: str):
         )
 
 
-@app.post("/game-sessions", status_code=status.HTTP_201_CREATED)
+@app.post("/game-sessions/", status_code=status.HTTP_201_CREATED)
 def create_game_session(session: schemas.GameSessionCreate):  
     """Create a new game session"""
     try:
@@ -347,24 +365,63 @@ def end_game_session(session_id: int):
         con = get_connection()
         ended_id = db.end_game_session(con, session_id)  
         return {"id": ended_id, "message": "Game session ended successfully"}
-    except ValueError as e:  
+    except exceptions.GameSessionNotFoundException as e:  
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
+    
+@app.delete("/game-sessions/{session_id}", status_code=status.HTTP_200_OK)
+def delete_game_session(session_id: int):
+    """Delete a game session"""
+    try:
+        con = get_connection()
+        cursor = con.cursor()
+        cursor.execute(
+            "DELETE FROM game_sessions WHERE id = %s RETURNING id;",
+            (session_id,)
+        )
+        result = cursor.fetchone()
+        if not result:
+            raise exceptions.GameSessionNotFoundException(session_id)
+        con.commit()
+        return {"id": result[0], "message": "Game session deleted successfully"}
+    except exceptions.GameSessionNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+@app.patch("/game-sessions/{session_id}/active", status_code=status.HTTP_200_OK)
+def update_game_session_active(session_id: int, is_active: bool):
+    """Toggle game session active status (PATCH = partial update)"""
+    try:
+        con = get_connection()
+        cursor = con.cursor()
+        cursor.execute(
+            "UPDATE game_sessions SET is_active = %s WHERE id = %s RETURNING id;",
+            (is_active, session_id)
+        )
+        result = cursor.fetchone()
+        if not result:
+            raise exceptions.GameSessionNotFoundException(session_id)
+        con.commit()
+        return {"id": result[0], "message": "Active status updated successfully"}
+    except exceptions.GameSessionNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 #player score endpoint
 
 
-@app.post("/player-scores", status_code=status.HTTP_201_CREATED)
+@app.post("/player-answers/", status_code=status.HTTP_201_CREATED)
 def submit_answer(player_answer: schemas.PlayerAnswerCreate):  
     try:
         con = get_connection()
         score_id = db.submit_answer(con, player_answer)  
         return {"id": score_id, "message": "Answer submitted successfully"}
-    except ValueError as e:  
+    except exceptions.AnswerNotFoundException as e:  
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         raise HTTPException(
@@ -390,7 +447,7 @@ def get_leaderboard(session_id: int):
 
 
 @app.get(
-    "/game-sessions/{session_id}/players/{player_id}/scores",
+    "/game-sessions/{session_id}/participants/{participant_id}/answers",
     response_model=List[schemas.PlayerScore], 
     status_code=status.HTTP_200_OK,
 )
@@ -405,6 +462,17 @@ def get_player_scores(session_id: int, player_id: int):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
+@app.patch("/participants/{participant_id}/score", status_code=status.HTTP_200_OK)
+def update_participant_score(participant_id: int, final_score: int):
+    """Update only the participant's score (PATCH = partial update)"""
+    try:
+        con = get_connection()
+        updated_id = db.update_participant_score(con, participant_id, final_score)
+        return {"id": updated_id, "message": "Score updated successfully"}
+    except exceptions.PlayerNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @app.get("/", status_code=status.HTTP_200_OK)
 def root():

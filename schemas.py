@@ -6,7 +6,7 @@ from datetime import datetime
 # Kahoot Schemas
 class KahootCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    category: Optional[str] = None
+    category: str = Field(..., min_length=1, max_length=50)
     
 
 
@@ -22,16 +22,18 @@ class Kahoot(BaseModel):
 class QuestionCreate(BaseModel):
     kahoot_id: int
     question_text: str = Field(..., min_length=1, max_length=500)
+    question_type: str = Field(default="multiple_choice")
     time_limit: int = Field(default=30, ge=5, le=300)  # seconds
-
+    points: int = Field(default=1000, ge=0)
 
 class Question(BaseModel):
     id: int
     kahoot_id: int
     media_id: Optional[int] = None
     question_text: str
-    time_limit: int | None = None
-    points: int | None = None
+    question_type: str
+    time_limit: int  
+    points: int
 
 
 # Answer/Option Schemas
@@ -50,14 +52,19 @@ class Answer(BaseModel):
 
 # Player Schemas
 class ParticipantCreate(BaseModel):
-    username: str = Field(..., min_length=1, max_length=100)
+    game_session_id: int
+    user_id: Optional[int] = None
+    username: Optional[str] = Field(None, min_length=1, max_length=100)
 
 
 class Participant(BaseModel):
     id: int
-    username: str
-    created_at: datetime
-
+    game_session_id: int
+    user_id: Optional[int] = None
+    username: Optional[str] = None
+    joined_at: datetime
+    final_score: int
+    rank: Optional[int] = None
 
 # Game Session Schemas
 class GameSessionCreate(BaseModel):
@@ -93,7 +100,7 @@ class PlayerAnswer(BaseModel):
 
 # Leaderboard Schema
 class LeaderboardEntry(BaseModel):
-    player_id: int
+    participant_id: int
     username: str
     total_score: int
     correct_answers: int
