@@ -24,7 +24,6 @@ app = FastAPI(title="Kahoot-like Quiz API", version="1.0.0")
 @app.get("/kahoots/", response_model=List[schemas.Kahoot], status_code=status.HTTP_200_OK)
 def get_kahoots():
     """get all kahoots"""
-    # Endpoint to get all kahoots
     try:
         con = get_connection()
         kahoots = db.get_all_kahoots(con)
@@ -35,7 +34,6 @@ def get_kahoots():
 @app.get("/kahoots/{kahoot_id}", response_model=schemas.Kahoot, status_code=status.HTTP_200_OK)
 def get_kahoot(kahoot_id: int):
     """get a specific kahoot by id"""
-    # Endpoint to get a specific kahoot by id
     try:
         con = get_connection()
         kahoot = db.get_kahoot(con, kahoot_id)
@@ -48,7 +46,6 @@ def get_kahoot(kahoot_id: int):
 @app.post("/kahoots/create/", response_model=schemas.KahootCreate, status_code=status.HTTP_201_CREATED)
 def create_kahoot(kahoot: schemas.KahootCreate):
     """create a new kahoot"""
-    # Endpoint to create a new kahoot
     try:
         con = get_connection()
         kahoot_id = db.create_kahoot(con, kahoot)
@@ -59,7 +56,6 @@ def create_kahoot(kahoot: schemas.KahootCreate):
 @app.delete("/kahoots/{kahoot_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_kahoot(kahoot_id: int):
     """delete a kahoot by id"""
-    # Endpoint to delete a kahoot by id
     try:
         con = get_connection()
         db.delete_kahoot(con, kahoot_id)
@@ -76,7 +72,6 @@ def delete_kahoot(kahoot_id: int):
 @app.put("/kahoots/{kahoot_id}", response_model=schemas.KahootCreate, status_code=status.HTTP_200_OK)
 def update_kahoot(kahoot_id: int, kahoot: schemas.KahootCreate):
     """update a kahoot"""
-    # Endpoint to update a kahoot
     try:
         con = get_connection()
         update_kahoot = db.update_kahoot(con, kahoot_id, kahoot.title, kahoot.category)
@@ -95,7 +90,6 @@ def update_kahoot(kahoot_id: int, kahoot: schemas.KahootCreate):
 @app.get("/kahoots/{kahoot_id}/questions/", response_model=List[schemas.Question], status_code=status.HTTP_200_OK)
 def get_questions(kahoot_id: int):
     """get all questions for a specific kahoot"""
-    # Endpoint to get all questions for a specific kahoot
     try:
         con = get_connection()
         questions = db.get_all_questions_quiz(con, kahoot_id)
@@ -106,7 +100,6 @@ def get_questions(kahoot_id: int):
 @app.get("/kahoots/{kahoot_id}/questions/{question_id}", response_model=schemas.Question, status_code=status.HTTP_200_OK)
 def get_question(kahoot_id: int, question_id: int):
     """get a specific question by id for a specific kahoot"""
-    # Endpoint to get a specific question by id for a specific kahoot
     try:
         con = get_connection()
         question = db.get_question(con, kahoot_id, question_id)
@@ -119,7 +112,6 @@ def get_question(kahoot_id: int, question_id: int):
 @app.post("/questions", status_code=status.HTTP_201_CREATED)
 def create_question(question: schemas.QuestionCreate):
     """create a new question for a specific kahoot"""
-    # Endpoint to create a new question for a specific kahoot
     try:
         con = get_connection()
         question_id = db.create_question(con, question)
@@ -130,7 +122,6 @@ def create_question(question: schemas.QuestionCreate):
 @app.put("/questions/{question_id}", status_code=status.HTTP_200_OK)
 def update_question(question_id: int, question: schemas.QuestionCreate):
     """update a question by id"""
-    # Endpoint to update a question by id
     try:
         con = get_connection()
         updated_question_id = db.update_question(
@@ -147,4 +138,273 @@ def update_question(question_id: int, question: schemas.QuestionCreate):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-# @app.delete("/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_question(question_id: int):
+    """delete a question by id"""
+    try:
+        con = get_connection()
+        deleted_id = db.delete_question(con, question_id)
+        return {"id": deleted_id, "message": "Question deleted successfully"}
+    except exceptions.ResourceNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except exceptions.DatabaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+    
+
+#answers endpoints
+
+@app.get(
+    "/questions/{question_id}/answers",
+    response_model=List[schemas.Answer],  
+    status_code=status.HTTP_200_OK,
+)
+def get_answers_by_question(question_id: int):
+    """Get all answers for a specific question"""
+    try:
+        con = get_connection()
+        answers = db.get_answers_by_question(con, question_id)  
+        return answers
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@app.post("/answers", status_code=status.HTTP_201_CREATED)
+def create_answer(answer: schemas.AnswerCreate): 
+    """Create a new answer"""
+    try:
+        con = get_connection()
+        answer_id = db.create_answer(con, answer)  
+        return {"id": answer_id, "message": "Answer created successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@app.put("/answers/{answer_id}", status_code=status.HTTP_200_OK)
+def update_answer(answer_id: int, answer: schemas.AnswerCreate): 
+    """Update an answer"""
+    try:
+        con = get_connection()
+        updated_id = db.update_answer(  
+            con, answer_id, answer.answer_text, answer.is_correct
+        )
+        return {"id": updated_id, "message": "Answer updated successfully"}
+    except exceptions.AnswerNotFoundException as e:  
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@app.delete("/answers/{answer_id}", status_code=status.HTTP_200_OK)
+def delete_answer(answer_id: int):
+    """Delete an answer"""
+    try:
+        con = get_connection()
+        deleted_id = db.delete_answer(con, answer_id)  
+        return {"id": deleted_id, "message": "Answer deleted successfully"}
+    except ValueError as e:  
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+# player/participant endpoints
+
+
+@app.get("/players", response_model=List[schemas.Player], status_code=status.HTTP_200_OK)  
+def get_all_players():
+    """Get all players"""
+    try:
+        con = get_connection()
+        players = db.get_players(con) 
+        return players
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@app.get("/players/{player_id}", response_model=schemas.Player, status_code=status.HTTP_200_OK) 
+def get_player(player_id: int):
+    """Get a single player by ID"""
+    try:
+        con = get_connection()
+        player = db.get_player(con, player_id) 
+        return player
+    except ValueError as e: 
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@app.post("/players", status_code=status.HTTP_201_CREATED)
+def create_player(player: schemas.PlayerCreate):  
+    """Create a new player"""
+    try:
+        con = get_connection()
+        player_id = db.create_player(con, player) 
+        return {"id": player_id, "message": "Player created successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+# game seession endpoints
+
+
+@app.get(
+    "/game-sessions",
+    response_model=List[schemas.GameSession],  
+    status_code=status.HTTP_200_OK,
+)
+def get_all_game_sessions():
+    """Get all game sessions"""
+    try:
+        con = get_connection()
+        sessions = db.get_game_sessions(con)  
+        return sessions
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@app.get(
+    "/game-sessions/{session_id}",
+    response_model=schemas.GameSession, 
+    status_code=status.HTTP_200_OK,
+)
+def get_game_session(session_id: int):
+    """Get a single game session by ID"""
+    try:
+        con = get_connection()
+        session = db.get_game_session(con, session_id)  
+        return session
+    except ValueError as e:  
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@app.get(
+    "/game-sessions/pin/{pin}",
+    response_model=schemas.GameSession,  
+    status_code=status.HTTP_200_OK,
+)
+def get_game_session_by_pin(pin: str):
+    """Get a game session by PIN"""
+    try:
+        con = get_connection()
+        session = db.get_game_session_by_pin(con, pin)  
+        return session
+    except ValueError as e:  
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@app.post("/game-sessions", status_code=status.HTTP_201_CREATED)
+def create_game_session(session: schemas.GameSessionCreate):  
+    """Create a new game session"""
+    try:
+        con = get_connection()
+        session_id = db.create_game_session(con, session) 
+        return {"id": session_id, "message": "Game session created successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@app.put("/game-sessions/{session_id}/end", status_code=status.HTTP_200_OK)
+def end_game_session(session_id: int):
+    """End a game session"""
+    try:
+        con = get_connection()
+        ended_id = db.end_game_session(con, session_id)  
+        return {"id": ended_id, "message": "Game session ended successfully"}
+    except ValueError as e:  
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+#player score endpoint
+
+
+@app.post("/player-scores", status_code=status.HTTP_201_CREATED)
+def submit_answer(player_answer: schemas.PlayerAnswerCreate):  
+    try:
+        con = get_connection()
+        score_id = db.submit_answer(con, player_answer)  
+        return {"id": score_id, "message": "Answer submitted successfully"}
+    except ValueError as e:  
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@app.get(
+    "/game-sessions/{session_id}/leaderboard",
+    response_model=List[schemas.LeaderboardEntry],  
+    status_code=status.HTTP_200_OK,
+)
+def get_leaderboard(session_id: int):
+    """Get the leaderboard for a game session"""
+    try:
+        con = get_connection()
+        leaderboard = db.get_leaderboard(con, session_id)  
+        return leaderboard
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@app.get(
+    "/game-sessions/{session_id}/players/{player_id}/scores",
+    response_model=List[schemas.PlayerScore], 
+    status_code=status.HTTP_200_OK,
+)
+def get_player_scores(session_id: int, player_id: int):
+    """Get all scores for a specific player in a game session"""
+    try:
+        con = get_connection()
+        scores = db.get_player_scores(con, session_id, player_id)  
+        return scores
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@app.get("/", status_code=status.HTTP_200_OK)
+def root():
+    """Root endpoint"""
+    return {
+        "message": "Welcome to the Kahoot-like Quiz API",
+        "docs": "/docs",
+        "version": "1.0.0",
+    }

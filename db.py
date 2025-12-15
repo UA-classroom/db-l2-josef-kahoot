@@ -127,7 +127,7 @@ def update_question(con, question_id, question_text, time_limit):
             )
             result = cursor.fetchone()
             if not result:
-                raise ValueError(f"Question with id {question_id} not found")
+                raise exceptions.QuestionNotFoundException(f"Question with id {question_id} not found")
             return result["id"]
 
 
@@ -138,7 +138,7 @@ def delete_question(con, question_id):
             cursor.execute("DELETE FROM questions WHERE id = %s RETURNING id;", (question_id,))
             result = cursor.fetchone()
             if not result:
-                raise ValueError(f"Question with id {question_id} not found")
+                raise exceptions.QuestionNotFoundException(f"Question with id {question_id} not found")
             return result["id"]
 
 
@@ -178,7 +178,7 @@ def update_answer(con, answer_id, answer_text, is_correct):
             )
             result = cursor.fetchone()
             if not result:
-                raise ValueError(f"Answer with id {answer_id} not found")
+                raise exceptions.AnswerNotFoundException(f"Answer with id {answer_id} not found")
             return result["id"]
 
 
@@ -189,7 +189,7 @@ def delete_answer(con, answer_id):
             cursor.execute("DELETE FROM answers WHERE id = %s RETURNING id;", (answer_id,))
             result = cursor.fetchone()
             if not result:
-                raise ValueError(f"Answer with id {answer_id} not found")
+                raise exceptions.AnswerNotFoundException(f"Answer with id {answer_id} not found")
             return result["id"]
 
 
@@ -211,7 +211,7 @@ def get_player(con, player_id):
             cursor.execute("SELECT * FROM players WHERE id = %s;", (player_id,))
             player = cursor.fetchone()
             if not player:
-                raise ValueError(f"Player with id {player_id} not found")
+                raise exceptions.PlayerNotFoundException(f"Player with id {player_id} not found")
             return player
 
 
@@ -245,7 +245,7 @@ def get_game_session(con, session_id):
             cursor.execute("SELECT * FROM game_sessions WHERE id = %s;", (session_id,))
             session = cursor.fetchone()
             if not session:
-                raise ValueError(f"Game session with id {session_id} not found")
+                raise exceptions.GameSessionNotFoundException(f"Game session with id {session_id} not found")
             return session
 
 
@@ -256,7 +256,7 @@ def get_game_session_by_pin(con, pin):
             cursor.execute("SELECT * FROM game_sessions WHERE pin = %s;", (pin,))
             session = cursor.fetchone()
             if not session:
-                raise ValueError(f"Game session with pin {pin} not found")
+                raise exceptions.GameSessionNotFoundException(f"Game session with pin {pin} not found")
             return session
 
 
@@ -266,7 +266,7 @@ def create_game_session(con, session: schemas.GameSessionCreate):
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(
                 "INSERT INTO game_sessions (kahoot_id, pin) VALUES (%s, %s) RETURNING id;",
-                (session.kahoot_id, session.pin),
+                (session.kahoot_id, session.session_pin),
             )
             session_id = cursor.fetchone()["id"]
     return session_id
@@ -282,7 +282,7 @@ def end_game_session(con, session_id):
             )
             result = cursor.fetchone()
             if not result:
-                raise ValueError(f"Game session with id {session_id} not found")
+                raise exceptions.GameSessionNotFoundException(f"Game session with id {session_id} not found")
             return result["id"]
 
 

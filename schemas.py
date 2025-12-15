@@ -6,7 +6,8 @@ from datetime import datetime
 # Kahoot Schemas
 class KahootCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
+    category: Optional[str] = None
+    
 
 
 class Kahoot(BaseModel):
@@ -61,15 +62,15 @@ class Player(BaseModel):
 # Game Session Schemas
 class GameSessionCreate(BaseModel):
     kahoot_id: int
-    pin: str = Field(..., min_length=4, max_length=8)
+    session_pin: str = Field(..., min_length=4, max_length=8)
 
 
 class GameSession(BaseModel):
     id: int
     kahoot_id: int
-    pin: str
+    session_pin: str
     is_active: bool
-    created_at: datetime
+    started_at: datetime
 
 
 # Player Score Schemas

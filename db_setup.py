@@ -106,7 +106,7 @@ def create_tables():
                         is_active BOOLEAN DEFAULT TRUE,
                         started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
                         """)
-            #making a particpents table
+            #making a particpents/players table
             cur.execute(""" Create table if not exists participants (
                         id SERIAL PRIMARY KEY,
                         game_session_id BIGINT REFERENCES game_sessions(id) ON DELETE CASCADE,
