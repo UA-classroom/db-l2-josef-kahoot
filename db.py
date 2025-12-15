@@ -195,38 +195,71 @@ def delete_answer(con, answer_id):
 
 # participant / player functions
 
-def get_players(con):
-    """Get all players"""
-    with con:
-        with con.cursor(cursor_factory=RealDictCursor) as cursor:
-            cursor.execute("SELECT * FROM players ORDER BY created_at DESC;")
-            players = cursor.fetchall()
-    return players
-
-
-def get_player(con, player_id):
-    """Get a single player by ID"""
-    with con:
-        with con.cursor(cursor_factory=RealDictCursor) as cursor:
-            cursor.execute("SELECT * FROM players WHERE id = %s;", (player_id,))
-            player = cursor.fetchone()
-            if not player:
-                raise exceptions.PlayerNotFoundException(f"Player with id {player_id} not found")
-            return player
-
-
-def create_player(con, player: schemas.PlayerCreate):
-    """Create a new player"""
+def get_participants(con, game_session_id: int):
+    """Get all participants for a game session"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(
-                "INSERT INTO players (username) VALUES (%s) RETURNING id;",
-                (player.username,),
+                "SELECT * FROM participants WHERE game_session_id = %s ORDER BY joined_at DESC;",
+                (game_session_id,)
             )
-            player_id = cursor.fetchone()["id"]
-    return player_id
+            participants = cursor.fetchall()
+    return participants
 
 
+def get_participant(con, participant_id: int):
+    """Get a single participant by ID"""
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute("SELECT * FROM participants WHERE id = %s;", (participant_id,))
+            participant = cursor.fetchone()
+            if not participant:
+                raise exceptions.PlayerNotFoundException(participant_id)
+            return participant
+
+
+def create_participant(con, participant: schemas.ParticipantCreate):
+    """Create a new participant (join a game session)"""
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(
+                "INSERT INTO participants (game_session_id) VALUES (%s) RETURNING id;",
+                (participant.game_session_id,),
+            )
+            participant_id = cursor.fetchone()["id"]
+    return participant_id
+
+def delete_participant(con, participant_id: int):
+    """Delete a participant (when they leave the game session)"""
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(
+                "DELETE FROM participants WHERE id = %s RETURNING id;",
+                (participant_id,)
+            )
+            result = cursor.fetchone()
+            if not result:
+                raise exceptions.PlayerNotFoundException(participant_id)
+            return result["id"]
+
+def update_participant_score(con, participant_id: int, final_score: int, rank: int = None):
+    """Update a participant's final score and rank"""
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cursor:
+            if rank is not None:
+                cursor.execute(
+                    "UPDATE participants SET final_score = %s, rank = %s WHERE id = %s RETURNING id;",
+                    (final_score, rank, participant_id)
+                )
+            else:
+                cursor.execute(
+                    "UPDATE participants SET final_score = %s WHERE id = %s RETURNING id;",
+                    (final_score, participant_id)
+                )
+            result = cursor.fetchone()
+            if not result:
+                raise exceptions.PlayerNotFoundException(participant_id)
+            return result["id"]
 # game session functions
 
 def get_game_sessions(con):
@@ -299,51 +332,57 @@ def submit_answer(con, player_answer: schemas.PlayerAnswerCreate):
             )
             answer = cursor.fetchone()
             if not answer:
-                raise ValueError(f"Answer with id {player_answer.answer_id} not found")
+                raise exceptions.AnswerNotFoundException(player_answer.answer_id)
 
             # Calculate points (1000 base points if correct, bonus for speed)
             points_earned = 0
             if answer["is_correct"]:
                 # Faster responses get more points (max 1000, min 500)
-                time_bonus = max(0, 500 - (player_answer.response_time // 100))
+                time_bonus = max(0, 500 - int(player_answer.time_taken * 10))
                 points_earned = 500 + time_bonus
 
-            # Insert the score
+            # Insert the score into player_answers table
             cursor.execute(
-                """INSERT INTO player_scores
-                (game_session_id, player_id, question_id, answer_id, response_time, points_earned)
+                """INSERT INTO player_answers
+                (session_id, participant_id, question_id, answer_id, time_taken, points_earned)
                 VALUES (%s, %s, %s, %s, %s, %s) RETURNING id;""",
                 (
-                    player_answer.game_session_id,
-                    player_answer.player_id,
+                    player_answer.session_id,
+                    player_answer.participant_id,
                     player_answer.question_id,
                     player_answer.answer_id,
-                    player_answer.response_time,
+                    player_answer.time_taken,
                     points_earned,
                 ),
             )
             score_id = cursor.fetchone()["id"]
+            
+            # Update participant's final_score
+            cursor.execute(
+                """UPDATE participants 
+                SET final_score = final_score + %s 
+                WHERE id = %s;""",
+                (points_earned, player_answer.participant_id)
+            )
     return score_id
 
-
-def get_leaderboard(con, game_session_id):
+def get_leaderboard(con, game_session_id: int):
     """Get the leaderboard for a game session"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(
                 """
                 SELECT
-                    p.id as player_id,
-                    p.username,
-                    COALESCE(SUM(ps.points_earned), 0) as total_score,
+                    p.id as participant_id,
+                    u.username,
+                    COALESCE(SUM(pa.points_earned), 0) as total_score,
                     COUNT(CASE WHEN a.is_correct THEN 1 END) as correct_answers
-                FROM players p
-                LEFT JOIN player_scores ps ON p.id = ps.player_id AND ps.game_session_id = %s
-                LEFT JOIN answers a ON ps.answer_id = a.id
-                WHERE p.id IN (
-                    SELECT DISTINCT player_id FROM player_scores WHERE game_session_id = %s
-                )
-                GROUP BY p.id, p.username
+                FROM participants p
+                LEFT JOIN users u ON p.user_id = u.id
+                LEFT JOIN player_answers pa ON p.id = pa.participant_id AND pa.session_id = %s
+                LEFT JOIN answers a ON pa.answer_id = a.id
+                WHERE p.game_session_id = %s
+                GROUP BY p.id, u.username
                 ORDER BY total_score DESC;
                 """,
                 (game_session_id, game_session_id),
@@ -352,21 +391,20 @@ def get_leaderboard(con, game_session_id):
     return leaderboard
 
 
-def get_player_scores(con, game_session_id, player_id):
-    """Get all scores for a specific player in a game session"""
+def get_participant_answers(con, session_id: int, participant_id: int):
+    """Get all answers for a specific participant in a game session"""
     with con:
         with con.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(
                 """
-                SELECT ps.*, q.question_text, a.answer_text, a.is_correct
-                FROM player_scores ps
-                JOIN questions q ON ps.question_id = q.id
-                JOIN answers a ON ps.answer_id = a.id
-                WHERE ps.game_session_id = %s AND ps.player_id = %s
-                ORDER BY ps.created_at;
+                SELECT pa.*, q.question_text, a.answer_text, a.is_correct
+                FROM player_answers pa
+                JOIN questions q ON pa.question_id = q.id
+                JOIN answers a ON pa.answer_id = a.id
+                WHERE pa.session_id = %s AND pa.participant_id = %s
+                ORDER BY pa.id;
                 """,
-                (game_session_id, player_id),
+                (session_id, participant_id),
             )
-            scores = cursor.fetchall()
-    return scores
-
+            answers = cursor.fetchall()
+    return answers

@@ -13,8 +13,8 @@ class KahootCreate(BaseModel):
 class Kahoot(BaseModel):
     id: int
     title: str
-    category: str  # Added - exists in DB
-    creation_date: datetime  # Changed from created_at
+    category: str  
+    creation_date: datetime  
     description: Optional[str] = None
 
 
@@ -49,11 +49,11 @@ class Answer(BaseModel):
 
 
 # Player Schemas
-class PlayerCreate(BaseModel):
+class ParticipantCreate(BaseModel):
     username: str = Field(..., min_length=1, max_length=100)
 
 
-class Player(BaseModel):
+class Participant(BaseModel):
     id: int
     username: str
     created_at: datetime
@@ -73,24 +73,22 @@ class GameSession(BaseModel):
     started_at: datetime
 
 
-# Player Score Schemas
+# Player/participant Score/answer Schemas
 class PlayerAnswerCreate(BaseModel):
-    game_session_id: int
-    player_id: int
+    session_id: int
+    participant_id: int
     question_id: int
     answer_id: int
-    response_time: int = Field(..., ge=0)  # milliseconds
+    time_taken: float 
 
-
-class PlayerScore(BaseModel):
+class PlayerAnswer(BaseModel):
     id: int
-    game_session_id: int
-    player_id: int
+    session_id: int
+    participant_id: int
     question_id: int
     answer_id: int
-    response_time: int
+    time_taken: float
     points_earned: int
-    created_at: datetime
 
 
 # Leaderboard Schema

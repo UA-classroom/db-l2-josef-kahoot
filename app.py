@@ -222,45 +222,51 @@ def delete_answer(answer_id: int):
 # player/participant endpoints
 
 
-@app.get("/players", response_model=List[schemas.Player], status_code=status.HTTP_200_OK)  
-def get_all_players():
-    """Get all players"""
+@app.get("/game-sessions/{game_session_id}/participants/", response_model=List[schemas.Participant], status_code=status.HTTP_200_OK)
+def get_participants(game_session_id: int):
+    """Get all participants for a game session"""
     try:
         con = get_connection()
-        players = db.get_players(con) 
-        return players
+        participants = db.get_participants(con, game_session_id)
+        return participants
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@app.get("/players/{player_id}", response_model=schemas.Player, status_code=status.HTTP_200_OK) 
-def get_player(player_id: int):
-    """Get a single player by ID"""
+@app.get("/participants/{participant_id}", response_model=schemas.Participant, status_code=status.HTTP_200_OK)
+def get_participant(participant_id: int):
+    """Get a single participant by ID"""
     try:
         con = get_connection()
-        player = db.get_player(con, player_id) 
-        return player
-    except ValueError as e: 
+        participant = db.get_participant(con, participant_id)
+        return participant
+    except exceptions.PlayerNotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@app.post("/players", status_code=status.HTTP_201_CREATED)
-def create_player(player: schemas.PlayerCreate):  
-    """Create a new player"""
+@app.post("/participants/", status_code=status.HTTP_201_CREATED)
+def create_participant(participant: schemas.ParticipantCreate):
+    """Create a new participant (join a game session)"""
     try:
         con = get_connection()
-        player_id = db.create_player(con, player) 
-        return {"id": player_id, "message": "Player created successfully"}
+        participant_id = db.create_participant(con, participant)
+        return {"id": participant_id, "message": "Participant created successfully"}
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@app.delete("/participants/{participant_id}", status_code=status.HTTP_200_OK)
+def delete_participant(participant_id: int):
+    """Delete a participant (when they leave the game session)"""
+    try:
+        con = get_connection()
+        deleted_id = db.delete_participant(con, participant_id)
+        return {"id": deleted_id, "message": "Participant removed successfully"}
+    except exceptions.PlayerNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 # game seession endpoints
